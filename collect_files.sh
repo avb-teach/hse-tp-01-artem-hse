@@ -39,65 +39,62 @@ max_depth_str = "$MAX_DEPTH"
 file_counts = defaultdict(int)
 
 # Определяем, используется ли ограничение max_depth
-using_max_depth = False
-max_depth = None
+exact_depth = None
 if max_depth_str:
     try:
-        max_depth = int(max_depth_str)
-        using_max_depth = True
+        exact_depth = int(max_depth_str)
     except ValueError:
         print("Ошибка: max_depth должен быть целым числом")
         sys.exit(1)
 
-def get_current_depth(path):
+def get_depth(path):
     """Определяем глубину пути относительно входной директории"""
     rel_path = os.path.relpath(path, input_dir)
     if rel_path == ".":
         return 0
     return rel_path.count(os.sep) + 1
 
-def process_directory(dir_path):
-    """Рекурсивно обрабатывает директорию"""
-    current_depth = get_current_depth(dir_path)
-    
-    # Проверяем, превышает ли текущая глубина max_depth
-    if using_max_depth and current_depth > max_depth:
-        return
+def copy_files():
+    """Копирует файлы согласно заданным параметрам"""
+    for root, dirs, files in os.walk(input_dir):
+        current_depth = get_depth(root)
         
-    # Обрабатываем файлы в текущей директории
-    for item in os.listdir(dir_path):
-        item_path = os.path.join(dir_path, item)
-        
-        if os.path.isfile(item_path):
-            if using_max_depth:
-                # С max_depth: создаем структуру директорий
-                rel_path = os.path.relpath(dir_path, input_dir)
-                if rel_path == ".":
-                    dest_file = os.path.join(output_dir, item)
-                else:
+        # Если задан exact_depth, копируем только файлы на точной глубине
+        # Иначе - копируем все файлы в корень с уникальными именами
+        if exact_depth is not None:
+            # Копируем только файлы на точно указанной глубине
+            if current_depth == exact_depth:
+                for file in files:
+                    src_file = os.path.join(root, file)
+                    
+                    # Создаем структуру директорий как в исходной
+                    rel_path = os.path.relpath(root, input_dir)
                     dest_dir = os.path.join(output_dir, rel_path)
                     os.makedirs(dest_dir, exist_ok=True)
-                    dest_file = os.path.join(dest_dir, item)
-            else:
-                # Без max_depth: копируем с уникальными именами
-                count = file_counts[item]
-                file_counts[item] += 1
+                    dest_file = os.path.join(dest_dir, file)
+                    
+                    # Копируем файл
+                    shutil.copy2(src_file, dest_file)
+        else:
+            # Без max_depth: копируем все файлы в корень с уникальными именами
+            for file in files:
+                src_file = os.path.join(root, file)
+                
+                # Определяем уникальное имя для файла
+                count = file_counts[file]
+                file_counts[file] += 1
                 
                 if count == 0:
-                    dest_file = os.path.join(output_dir, item)
+                    dest_file = os.path.join(output_dir, file)
                 else:
-                    base_name, ext = os.path.splitext(item)
+                    base_name, ext = os.path.splitext(file)
                     dest_file = os.path.join(output_dir, f"{base_name}{count}{ext}")
-            
-            # Копируем файл
-            shutil.copy2(item_path, dest_file)
-        
-        elif os.path.isdir(item_path):
-            # Рекурсивно обрабатываем поддиректорию
-            process_directory(item_path)
+                
+                # Копируем файл
+                shutil.copy2(src_file, dest_file)
 
-# Начинаем обработку от корневой директории
-process_directory(input_dir)
+# Запускаем функцию копирования
+copy_files()
 EOF
 
 echo "Копирование завершено"
