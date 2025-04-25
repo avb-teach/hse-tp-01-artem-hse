@@ -29,43 +29,69 @@ python3 - <<EOF
 import os
 import shutil
 import sys
-from collections import defaultdict
 
 input_dir = "$INPUT_DIR"
 output_dir = "$OUTPUT_DIR"
 max_depth_str = "$MAX_DEPTH"
 
-# Проверяем, указан ли параметр max_depth
-has_max_depth = bool(max_depth_str)
+# Проверяем наличие max_depth
+max_depth = None
+if max_depth_str:
+    try:
+        max_depth = int(max_depth_str)
+    except ValueError:
+        print("Ошибка: max_depth должен быть целым числом")
+        sys.exit(1)
 
-# Если max_depth указан, не копируем никакие файлы
-if not has_max_depth:
-    # Счетчик файлов для обработки дубликатов
-    file_counts = defaultdict(int)
-    
-    # Обходим все файлы во входной директории
+def rel_depth(path):
+    """Вычисляет глубину пути относительно входной директории"""
+    rel_path = os.path.relpath(path, input_dir)
+    if rel_path == ".":
+        return 0
+    return rel_path.count(os.sep) + 1
+
+def copy_files_with_depth():
+    """Копирует файлы согласно указанной max_depth"""
     for root, dirs, files in os.walk(input_dir):
+        depth = rel_depth(root)
+        
+        # Если max_depth задан и превышен, пропускаем поддиректории
+        if max_depth is not None and depth > max_depth:
+            dirs[:] = []  # Не углубляемся дальше
+            continue
+
         for file in files:
-            # Путь к исходному файлу
             src_file = os.path.join(root, file)
+            rel_path = os.path.relpath(root, input_dir)
             
-            # Определяем уникальное имя для файла
-            count = file_counts[file]
-            file_counts[file] += 1
-            
-            if count == 0:
-                dest_file = os.path.join(output_dir, file)
+            # Создаем структуру директорий до заданной глубины
+            if rel_path == ".":
+                dest_dir = output_dir
             else:
-                base_name, ext = os.path.splitext(file)
-                dest_file = os.path.join(output_dir, f"{base_name}{count}{ext}")
+                dest_dir = os.path.join(output_dir, rel_path)
+            
+            os.makedirs(dest_dir, exist_ok=True)
             
             # Копируем файл
+            dest_file = os.path.join(dest_dir, file)
             shutil.copy2(src_file, dest_file)
-    
-    print(f"Скопировано {sum(file_counts.values())} файлов")
+
+def copy_all_files_to_root():
+    """Копирует все файлы в корень выходной директории"""
+    for root, _, files in os.walk(input_dir):
+        for file in files:
+            src_file = os.path.join(root, file)
+            dest_file = os.path.join(output_dir, file)
+            shutil.copy2(src_file, dest_file)
+
+# Если max_depth указан, копируем с учетом глубины
+if max_depth is not None:
+    copy_files_with_depth()
 else:
-    print("Параметр --max_depth указан. Файлы не копируются.")
+    # Если max_depth не указан, копируем все файлы в корень
+    copy_all_files_to_root()
+
 EOF
 
-echo "Операция завершена"
+echo "Копирование завершено"
 exit 0
