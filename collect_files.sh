@@ -8,7 +8,7 @@ fi
 
 INPUT_DIR="$1"
 OUTPUT_DIR="$2"
-MAX_DEPTH=-1
+MAX_DEPTH=""
 
 # Проверка входной директории
 if [ ! -d "$INPUT_DIR" ]; then
@@ -35,59 +35,69 @@ input_dir = "$INPUT_DIR"
 output_dir = "$OUTPUT_DIR"
 max_depth_str = "$MAX_DEPTH"
 
-# Обработка max_depth
+# Счетчик файлов для обработки дубликатов
+file_counts = defaultdict(int)
+
+# Определяем, используется ли ограничение max_depth
+using_max_depth = False
 max_depth = None
-if max_depth_str and max_depth_str != "-1":
+if max_depth_str:
     try:
         max_depth = int(max_depth_str)
+        using_max_depth = True
     except ValueError:
         print("Ошибка: max_depth должен быть целым числом")
         sys.exit(1)
 
-# Счетчик файлов для обработки дубликатов
-file_counts = defaultdict(int)
+def get_current_depth(path):
+    """Определяем глубину пути относительно входной директории"""
+    rel_path = os.path.relpath(path, input_dir)
+    if rel_path == ".":
+        return 0
+    return rel_path.count(os.sep) + 1
 
-# Основной алгоритм копирования
-def copy_files():
-    for root, dirs, files in os.walk(input_dir):
-        # Вычисляем текущую глубину
-        rel_path = os.path.relpath(root, input_dir)
-        depth = 0 if rel_path == "." else rel_path.count(os.sep) + 1
+def process_directory(dir_path):
+    """Рекурсивно обрабатывает директорию"""
+    current_depth = get_current_depth(dir_path)
+    
+    # Проверяем, превышает ли текущая глубина max_depth
+    if using_max_depth and current_depth > max_depth:
+        return
         
-        # Проверяем ограничение по глубине
-        if max_depth is not None and depth > max_depth:
-            continue  # Пропускаем директории глубже max_depth
-            
-        for file in files:
-            src_file = os.path.join(root, file)
-            
-            # Определяем путь назначения в зависимости от наличия max_depth
-            if max_depth is not None:
-                # Сохраняем структуру каталогов до max_depth
+    # Обрабатываем файлы в текущей директории
+    for item in os.listdir(dir_path):
+        item_path = os.path.join(dir_path, item)
+        
+        if os.path.isfile(item_path):
+            if using_max_depth:
+                # С max_depth: создаем структуру директорий
+                rel_path = os.path.relpath(dir_path, input_dir)
                 if rel_path == ".":
-                    # Файлы из корневой директории
-                    dest_file = os.path.join(output_dir, file)
+                    dest_file = os.path.join(output_dir, item)
                 else:
-                    # Создаем соответствующую структуру каталогов
                     dest_dir = os.path.join(output_dir, rel_path)
                     os.makedirs(dest_dir, exist_ok=True)
-                    dest_file = os.path.join(dest_dir, file)
+                    dest_file = os.path.join(dest_dir, item)
             else:
-                # Без max_depth - все файлы в корень с уникальными именами
-                base_name, ext = os.path.splitext(file)
-                count = file_counts[file]
-                file_counts[file] += 1
+                # Без max_depth: копируем с уникальными именами
+                count = file_counts[item]
+                file_counts[item] += 1
                 
                 if count == 0:
-                    dest_file = os.path.join(output_dir, file)
+                    dest_file = os.path.join(output_dir, item)
                 else:
+                    base_name, ext = os.path.splitext(item)
                     dest_file = os.path.join(output_dir, f"{base_name}{count}{ext}")
             
-            # Копируем файл с сохранением атрибутов
-            shutil.copy2(src_file, dest_file)
+            # Копируем файл
+            shutil.copy2(item_path, dest_file)
+        
+        elif os.path.isdir(item_path):
+            # Рекурсивно обрабатываем поддиректорию
+            process_directory(item_path)
 
-# Запускаем функцию копирования
-copy_files()
+# Начинаем обработку от корневой директории
+process_directory(input_dir)
 EOF
 
 echo "Копирование завершено"
