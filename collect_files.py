@@ -2,76 +2,58 @@
 
 import os
 from collections import defaultdict
-import shutil
-import sys
 
-def collect_files(input_dir, output_dir, max_depth=None):
+def collect_files(input_dir, max_depth=None):
     """
-    Собирает файлы с учетом максимальной глубины.
-    
+    Собирает все файлы в указанной директории и её поддиректориях, группируя по именам.
+
     Args:
-        input_dir (str): Входная директория
-        output_dir (str): Выходная директория
-        max_depth (int, optional): Максимальная глубина
-    
+        input_dir (str): Входная директория для сбора файлов.
+        max_depth (int, optional): Максимальная глубина вложенности (0 означает только корень).
+
     Returns:
-        defaultdict: Словарь с файлами
+        defaultdict(set): Словарь формата {имя файла: пути к файлам}.
     """
-    result = defaultdict(set)
-    
-    # Создаем выходную директорию
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Получаем абсолютный путь входной директории
+    files_dict = defaultdict(set)
     input_dir = os.path.abspath(input_dir)
-    base_depth = len(input_dir.rstrip(os.sep).split(os.sep))
-    
+    base_depth = len(input_dir.rstrip(os.sep).split(os.sep))  # Глубина корневой директории
+
     for root, _, files in os.walk(input_dir):
-        # Вычисляем текущую глубину
+        # Рассчитываем текущую глубину
         current_depth = len(root.rstrip(os.sep).split(os.sep)) - base_depth
-        
-        # Пропускаем, если глубина превышает max_depth
+
+        # Если глубина превышает max_depth, пропускаем директорию
         if max_depth is not None and current_depth > max_depth:
             continue
-            
+
         for file in files:
-            src_path = os.path.join(root, file)
-            dest_file = file
-            
-            # Создаем уникальное имя если файл существует
-            counter = 1
-            while os.path.exists(os.path.join(output_dir, dest_file)):
-                name, ext = os.path.splitext(file)
-                dest_file = f"{name}_{counter}{ext}"
-                counter += 1
-            
-            # Копируем файл
-            dest_path = os.path.join(output_dir, dest_file)
-            shutil.copy2(src_path, dest_path)
-            
-            # Добавляем в результат
+            # Получаем относительный путь файла от input_dir
             rel_path = os.path.relpath(root, input_dir)
             if rel_path == '.':
-                result[file].add(dest_file)
+                files_dict[file].add(file)  # Файл в корне директории
             else:
-                result[file].add(os.path.join(rel_path, dest_file))
-    
-    return result
+                files_dict[file].add(os.path.join(rel_path, file))  # Файл в поддиректории
 
+    return files_dict
+
+# Запуск из командной строки
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python3 collect_files.py input_dir output_dir [max_depth]")
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python3 collect_files.py <input_dir> [max_depth]")
         sys.exit(1)
-    
+
     input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
     max_depth = None
-    
-    if len(sys.argv) > 3:
+
+    # Если max_depth передан, конвертируем в число
+    if len(sys.argv) > 2:
         try:
-            max_depth = int(sys.argv[3])
+            max_depth = int(sys.argv[2])
         except ValueError:
-            print("Error: max_depth must be an integer")
+            print("Error: Max depth must be an integer")
             sys.exit(1)
-    
-    collect_files(input_dir, output_dir, max_depth)
+
+    result = collect_files(input_dir, max_depth)
+    print(dict(result))
