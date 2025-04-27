@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e  # Прерываем выполнение при ошибке
 
 # Проверяем количество аргументов
@@ -12,8 +11,8 @@ INPUT_DIR="$1"
 OUTPUT_DIR="$2"
 MAX_DEPTH=""
 
-# Проверяем и обрабатываем max_depth
-if [ "$#" -eq 4 ] && [ "$3" = "--max_depth" ]; then
+# Обрабатываем параметр max_depth
+if [ "$#" -eq 4 ] && [ "$3" == "--max_depth" ]; then
     MAX_DEPTH="\$4"
 fi
 
