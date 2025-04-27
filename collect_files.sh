@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Прерываем выполнение при ошибке
+
 # Проверяем количество аргументов
 if [ "$#" -lt 2 ]; then
     echo "Usage: $0 <input_dir> <output_dir> [--max_depth depth]"
@@ -10,18 +12,18 @@ INPUT_DIR="$1"
 OUTPUT_DIR="$2"
 MAX_DEPTH=""
 
-# Обрабатываем параметр max_depth
+# Проверяем и обрабатываем max_depth
 if [ "$#" -eq 4 ] && [ "$3" = "--max_depth" ]; then
     MAX_DEPTH="\$4"
 fi
 
-# Проверяем директорию-источник
+# Проверяем существование входной директории
 if [ ! -d "$INPUT_DIR" ]; then
     echo "Error: Input directory does not exist"
     exit 1
 fi
 
-# Пускаем Python-скрипт
+# Запускаем Python-скрипт
 if [ -n "$MAX_DEPTH" ]; then
     python3 collect_files.py "$INPUT_DIR" "$OUTPUT_DIR" "$MAX_DEPTH"
 else

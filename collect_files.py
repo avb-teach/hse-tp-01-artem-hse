@@ -2,57 +2,51 @@
 
 import os
 from collections import defaultdict
+import shutil
 
 
 def collect_files(input_dir, output_dir, max_depth=None):
     """
-    Сбор файлов из input_dir в output_dir с учётом max_depth.
-    Скрипт сохраняет структуру директорий и обрабатывает глубину корректно.
+    Сбор файлов из содержащей директории в output_dir с учётом глубины.
 
     Args:
-        input_dir (str): Путь к входной директории.
-        output_dir (str): Путь к выходной директории.
-        max_depth (int, optional): Максимальная глубина для обхода файлов.
+        input_dir (str): Входная директория.
+        output_dir (str): Директория назначения.
+        max_depth (int, optional): Уровень глубины (None для неограниченного обхода).
 
     Returns:
-        defaultdict: {имя файла: {пути к файлам}}
+        defaultdict: {имя файла: {относительные пути}}
     """
-
-    # Создаем выходную директорию
     os.makedirs(output_dir, exist_ok=True)
-
-    result = defaultdict(set)
+    file_map = defaultdict(set)
     abs_input_dir = os.path.abspath(input_dir)
     base_depth = abs_input_dir.rstrip(os.sep).count(os.sep)
 
     for root, _, files in os.walk(abs_input_dir):
-        # Рассчитываем текущую глубину директории
+        # Вычисляем текущую глубину директории
         current_depth = root.rstrip(os.sep).count(os.sep) - base_depth
-
-        # Пропуск директорий, если превышена максимальная глубина
         if max_depth is not None and current_depth >= max_depth:
             continue
 
-        # Обработка каждого файла
         for file in files:
-            # Путь к исходному файлу
-            src_path = os.path.join(root, file)
-            # Относительный путь от корня
-            rel_path = os.path.relpath(src_path, abs_input_dir)
-            # Путь в выходной директории
-            dest_path = os.path.join(output_dir, rel_path)
+            relative_path = os.path.relpath(root, abs_input_dir)
+            if relative_path == ".":
+                relative_path = ""  # Для файлов в корне директории
 
-            # Создание вложенных директорий
+            src_path = os.path.join(root, file)
+            dest_path = os.path.join(output_dir, relative_path, file)
+
+            # Создаём недостающие папки в output_dir
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
-            # Копирование файла
-            with open(src_path, "rb") as src_file, open(dest_path, "wb") as dest_file:
-                dest_file.write(src_file.read())
+            # Копируем файл
+            shutil.copy2(src_path, dest_path)
 
-            # Добавляем путь в результат
-            result[file].add(rel_path)
+            # Добавляем файл в результирующий словарь
+            rel_file_path = os.path.join(relative_path, file) if relative_path else file
+            file_map[file].add(rel_file_path)
 
-    return result
+    return file_map
 
 
 if __name__ == "__main__":
@@ -73,4 +67,5 @@ if __name__ == "__main__":
             print("Error: max_depth must be an integer")
             sys.exit(1)
 
-    collect_files(input_dir, output_dir, max_depth)
+    result = collect_files(input_dir, output_dir, max_depth)
+    print(dict(result))
