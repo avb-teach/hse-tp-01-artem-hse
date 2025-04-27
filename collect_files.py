@@ -1,49 +1,84 @@
 #!/usr/bin/env python3
-
 import os
 import sys
 import shutil
+import argparse
 
-def collect_files(input_dir, output_dir, max_depth=None):
-    """
-    Рекурсивно копирует файлы из input_dir в output_dir с учетом max_depth.
-    """
-
-    # Уровень вложенности input_dir
+def main():
+    # Настройка парсера аргументов
+    parser = argparse.ArgumentParser(description='Собирает файлы из входной директории в выходную.')
+    parser.add_argument('input_dir', help='Входная директория')
+    parser.add_argument('output_dir', help='Выходная директория')
+    parser.add_argument('--max_depth', type=int, help='Максимальная глубина копирования')
+    
+    args = parser.parse_args()
+    
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    max_depth = args.max_depth
+    
+    # Создаем выходную директорию, если не существует
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Получаем базовую глубину входной директории для вычисления относительной глубины
     base_depth = len(input_dir.rstrip('/').split('/'))
-
-    # Копируем файлы
+    
+    # Обходим все файлы и директории
     for root, dirs, files in os.walk(input_dir):
-        # Рассчитываем текущую глубину
+        # Вычисляем текущую глубину относительно входной директории
         current_depth = len(root.rstrip('/').split('/')) - base_depth
-
-        # Пропускаем директории, превышающие max_depth
-        if max_depth is not None and current_depth >= max_depth:
-            dirs[:] = []
+        
+        # Если указана максимальная глубина и текущая глубина превышает ее - пропускаем
+        if max_depth is not None and current_depth > max_depth:
+            dirs[:] = []  # Предотвращаем дальнейший обход
             continue
-
-        for file in files:
-            # Полный путь к исходному файлу
-            src_path = os.path.join(root, file)
-            # Путь к файлу в выходной директории
-            dst_path = os.path.join(output_dir, file)
-
-            # Если файл с таким именем уже существует, добавляем суффикс
-            counter = 1
-            while os.path.exists(dst_path):
-                name, ext = os.path.splitext(file)
-                dst_path = os.path.join(output_dir, f"{name}_{counter}{ext}")
-                counter += 1
-
-            # Копируем файл
-            shutil.copy2(src_path, dst_path)
+        
+        # Определяем, как копировать файлы в зависимости от наличия max_depth
+        if max_depth is not None:
+            # С сохранением структуры до указанной глубины
+            rel_path = os.path.relpath(root, input_dir)
+            
+            # Копируем файлы
+            for file in files:
+                src = os.path.join(root, file)
+                
+                if rel_path == '.':
+                    # Корневая директория - копируем прямо в output_dir
+                    dst = os.path.join(output_dir, file)
+                else:
+                    # Создаем поддиректории
+                    dst_dir = os.path.join(output_dir, rel_path)
+                    os.makedirs(dst_dir, exist_ok=True)
+                    dst = os.path.join(dst_dir, file)
+                
+                # Обработка дублирующихся имен
+                if os.path.exists(dst):
+                    name, ext = os.path.splitext(file)
+                    counter = 1
+                    while os.path.exists(dst):
+                        new_name = f'{name}{counter}{ext}'
+                        if rel_path == '.':
+                            dst = os.path.join(output_dir, new_name)
+                        else:
+                            dst = os.path.join(dst_dir, new_name)
+                        counter += 1
+                
+                shutil.copy2(src, dst)
+        else:
+            # Без сохранения структуры - все файлы в одну директорию
+            for file in files:
+                src = os.path.join(root, file)
+                dst = os.path.join(output_dir, file)
+                
+                # Обработка дублирующихся имен
+                if os.path.exists(dst):
+                    name, ext = os.path.splitext(file)
+                    counter = 1
+                    while os.path.exists(dst):
+                        dst = os.path.join(output_dir, f'{name}{counter}{ext}')
+                        counter += 1
+                
+                shutil.copy2(src, dst)
 
 if __name__ == "__main__":
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-    max_depth = int(sys.argv[3]) if len(sys.argv) > 3 else None
-
-    # Создаем выходную директорию, если её нет
-    os.makedirs(output_dir, exist_ok=True)
-
-    collect_files(input_dir, output_dir, max_depth)
+    main()
