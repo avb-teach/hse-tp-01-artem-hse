@@ -15,15 +15,15 @@ if [ "$#" -eq 4 ] && [ "$3" = "--max_depth" ]; then
     MAX_DEPTH="\$4"
 fi
 
-# Проверяем существование входной директории
+# Проверяем директорию-источник
 if [ ! -d "$INPUT_DIR" ]; then
     echo "Error: Input directory does not exist"
     exit 1
 fi
 
-# Запускаем Python-скрипт
-if [ -z "$MAX_DEPTH" ]; then
-    python3 collect_files.py "$INPUT_DIR" "$OUTPUT_DIR"
-else
+# Пускаем Python-скрипт
+if [ -n "$MAX_DEPTH" ]; then
     python3 collect_files.py "$INPUT_DIR" "$OUTPUT_DIR" "$MAX_DEPTH"
+else
+    python3 collect_files.py "$INPUT_DIR" "$OUTPUT_DIR"
 fi

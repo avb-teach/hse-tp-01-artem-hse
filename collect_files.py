@@ -2,50 +2,55 @@
 
 import os
 from collections import defaultdict
-import shutil
 
 
 def collect_files(input_dir, output_dir, max_depth=None):
     """
-    Собирает файлы из указанной директории и её поддиректорий с учётом глубины.
+    Сбор файлов из input_dir в output_dir с учётом max_depth.
+    Скрипт сохраняет структуру директорий и обрабатывает глубину корректно.
 
     Args:
-        input_dir (str): Входная директория.
-        output_dir (str): Выходная директория.
-        max_depth (int, optional): Максимальная глубина обхода.
+        input_dir (str): Путь к входной директории.
+        output_dir (str): Путь к выходной директории.
+        max_depth (int, optional): Максимальная глубина для обхода файлов.
 
     Returns:
-        defaultdict: Словарь формата {имя файла: {относительные пути}}.
+        defaultdict: {имя файла: {пути к файлам}}
     """
 
-    # Создаём выходную директорию
+    # Создаем выходную директорию
     os.makedirs(output_dir, exist_ok=True)
 
-    # Хранение результатов в формате: имя файла -> пути файлов.
     result = defaultdict(set)
     abs_input_dir = os.path.abspath(input_dir)
     base_depth = abs_input_dir.rstrip(os.sep).count(os.sep)
 
     for root, _, files in os.walk(abs_input_dir):
-        # Рассчитываем текущую глубину.
-        rel_path = os.path.relpath(root, abs_input_dir)
+        # Рассчитываем текущую глубину директории
         current_depth = root.rstrip(os.sep).count(os.sep) - base_depth
 
-        # Если текущая глубина превышает max_depth, пропускаем директорию.
+        # Пропуск директорий, если превышена максимальная глубина
         if max_depth is not None and current_depth >= max_depth:
             continue
 
+        # Обработка каждого файла
         for file in files:
-            relative_file_path = os.path.join(rel_path, file)
-            abs_file_path = os.path.join(root, file)
+            # Путь к исходному файлу
+            src_path = os.path.join(root, file)
+            # Относительный путь от корня
+            rel_path = os.path.relpath(src_path, abs_input_dir)
+            # Путь в выходной директории
+            dest_path = os.path.join(output_dir, rel_path)
 
-            # Копируем файл в выходную директорию, сохраняя структуру.
-            dest_dir = os.path.join(output_dir, rel_path)
-            os.makedirs(dest_dir, exist_ok=True)
-            shutil.copy2(abs_file_path, os.path.join(dest_dir, file))
+            # Создание вложенных директорий
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
-            # Добавляем результат в словарь.
-            result[file].add(relative_file_path)
+            # Копирование файла
+            with open(src_path, "rb") as src_file, open(dest_path, "wb") as dest_file:
+                dest_file.write(src_file.read())
+
+            # Добавляем путь в результат
+            result[file].add(rel_path)
 
     return result
 
@@ -53,7 +58,6 @@ def collect_files(input_dir, output_dir, max_depth=None):
 if __name__ == "__main__":
     import sys
 
-    # Парсим аргументы командной строки.
     if len(sys.argv) < 3:
         print("Usage: python3 collect_files.py <input_dir> <output_dir> [max_depth]")
         sys.exit(1)
@@ -69,5 +73,4 @@ if __name__ == "__main__":
             print("Error: max_depth must be an integer")
             sys.exit(1)
 
-    # Запускаем функцию.
     collect_files(input_dir, output_dir, max_depth)
