@@ -5,7 +5,7 @@ import shutil
 import argparse
 
 def main():
-    # Настройка парсера аргументов
+    # Настройка аргументов
     parser = argparse.ArgumentParser(description='Собирает файлы из входной директории в выходную.')
     parser.add_argument('input_dir', help='Входная директория')
     parser.add_argument('output_dir', help='Выходная директория')
@@ -17,7 +17,7 @@ def main():
     output_dir = args.output_dir
     max_depth = args.max_depth
     
-    # Создаем выходную директорию, если не существует
+    # Создаем выходную директорию
     os.makedirs(output_dir, exist_ok=True)
     
     # Получаем базовую глубину входной директории для вычисления относительной глубины
@@ -35,7 +35,7 @@ def main():
         
         # Определяем, как копировать файлы в зависимости от наличия max_depth
         if max_depth is not None:
-            # С сохранением структуры до указанной глубины
+            # Сохраняем структуру до указанной глубины
             rel_path = os.path.relpath(root, input_dir)
             
             # Копируем файлы
