@@ -18,4 +18,4 @@ if [ "$#" -eq 4 ] && [ "$3" = "--max_depth" ]; then
 fi
 
 # Вызов Python-скрипта
-python3 collector.py "$INPUT_DIR" "$OUTPUT_DIR" $MAX_DEPTH_FLAG $MAX_DEPTH
+python3 collect_files.py "$INPUT_DIR" "$OUTPUT_DIR" $MAX_DEPTH_FLAG $MAX_DEPTH
