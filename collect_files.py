@@ -5,7 +5,7 @@ import shutil
 import argparse
 
 def main():
-    # Настройка аргументов
+
     parser = argparse.ArgumentParser(description='Собирает файлы из входной директории в выходную.')
     parser.add_argument('input_dir', help='Входная директория')
     parser.add_argument('output_dir', help='Выходная директория')
@@ -17,41 +17,31 @@ def main():
     output_dir = args.output_dir
     max_depth = args.max_depth
     
-    # Создаем выходную директорию
     os.makedirs(output_dir, exist_ok=True)
     
-    # Получаем базовую глубину входной директории для вычисления относительной глубины
     base_depth = len(input_dir.rstrip('/').split('/'))
     
-    # Обходим все файлы и директории
     for root, dirs, files in os.walk(input_dir):
-        # Вычисляем текущую глубину относительно входной директории
+
         current_depth = len(root.rstrip('/').split('/')) - base_depth
         
-        # Если указана максимальная глубина и текущая глубина превышает ее - пропускаем
         if max_depth is not None and current_depth > max_depth:
-            dirs[:] = []  # Предотвращаем дальнейший обход
+            dirs[:] = [] 
             continue
         
-        # Определяем, как копировать файлы в зависимости от наличия max_depth
         if max_depth is not None:
-            # Сохраняем структуру до указанной глубины
             rel_path = os.path.relpath(root, input_dir)
             
-            # Копируем файлы
             for file in files:
                 src = os.path.join(root, file)
                 
                 if rel_path == '.':
-                    # Корневая директория - копируем прямо в output_dir
                     dst = os.path.join(output_dir, file)
                 else:
-                    # Создаем поддиректории
                     dst_dir = os.path.join(output_dir, rel_path)
                     os.makedirs(dst_dir, exist_ok=True)
                     dst = os.path.join(dst_dir, file)
                 
-                # Обработка дублирующихся имен
                 if os.path.exists(dst):
                     name, ext = os.path.splitext(file)
                     counter = 1
@@ -65,12 +55,10 @@ def main():
                 
                 shutil.copy2(src, dst)
         else:
-            # Без сохранения структуры - все файлы в одну директорию
             for file in files:
                 src = os.path.join(root, file)
                 dst = os.path.join(output_dir, file)
                 
-                # Обработка дублирующихся имен
                 if os.path.exists(dst):
                     name, ext = os.path.splitext(file)
                     counter = 1
