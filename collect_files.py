@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import sys
 import shutil
@@ -55,6 +56,7 @@ def main():
                 
                 shutil.copy2(src, dst)
         else:
+
             for file in files:
                 src = os.path.join(root, file)
                 dst = os.path.join(output_dir, file)
